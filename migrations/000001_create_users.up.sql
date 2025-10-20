@@ -10,6 +10,4 @@ CREATE TABLE users
 	CONSTRAINT users_login_uniq UNIQUE (login)
 );
 
-CREATE INDEX users_login_password_idx ON users(login, password);
-
 COMMIT;
