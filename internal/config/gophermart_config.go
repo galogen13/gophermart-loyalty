@@ -10,6 +10,7 @@ type GophermartConfig struct {
 	RunAddress           string `env:"RUN_ADDRESS"`
 	DatabaseURI          string `env:"DATABASE_URI"`
 	AccrualSystemAddress string `env:"ACCRUAL_SYSTEM_ADDRESS"`
+	JWTSecret            string `env:"JWT_SECRET"`
 }
 
 func GetGophermartConfig() (*GophermartConfig, error) {
@@ -24,6 +25,7 @@ func GetGophermartConfig() (*GophermartConfig, error) {
 	runAddressFlag := flag.String("a", "localhost:8080", "host address")
 	databaseURIFlag := flag.String("d", "", "database URI")
 	accrualSystemAddressFlag := flag.String("r", "", "accrual system address")
+	jwtSecretFlag := flag.String("j", "gophermart-secret-key", "accrual system address")
 
 	flag.Parse()
 
@@ -37,6 +39,10 @@ func GetGophermartConfig() (*GophermartConfig, error) {
 
 	if cfg.AccrualSystemAddress == "" {
 		cfg.AccrualSystemAddress = *accrualSystemAddressFlag
+	}
+
+	if cfg.JWTSecret == "" {
+		cfg.JWTSecret = *jwtSecretFlag
 	}
 
 	return &cfg, nil

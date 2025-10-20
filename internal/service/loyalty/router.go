@@ -3,6 +3,7 @@ package loyalty
 import (
 	"net/http"
 
+	"github.com/galogen13/gophermart-loyalty/internal/auth"
 	"github.com/galogen13/gophermart-loyalty/internal/handlers"
 	"github.com/galogen13/gophermart-loyalty/internal/logger"
 	"github.com/go-chi/chi/v5"
@@ -23,33 +24,39 @@ func loyaltyRouter(ls handlers.LoyaltyService) *chi.Mux {
 
 		r.Route("/register", func(r chi.Router) {
 			r.Post("/", logger.RequestLogger(
-				handlers.Empty(ls)))
+				handlers.RegisterUserHandler(ls)))
 		})
 
 		r.Route("/login", func(r chi.Router) {
 			r.Post("/", logger.RequestLogger(
-				handlers.Empty(ls)))
+				handlers.LoginUserHandler(ls)))
 		})
 
 		r.Route("/orders", func(r chi.Router) {
+
 			r.Post("/", logger.RequestLogger(
-				handlers.Empty(ls)))
+				auth.RequireAuth(ls,
+					handlers.Empty(ls))))
 			r.Get("/", logger.RequestLogger(
-				handlers.Empty(ls)))
+				auth.RequireAuth(ls,
+					handlers.Empty(ls))))
 		})
 
 		r.Route("/balance", func(r chi.Router) {
 			r.Get("/", logger.RequestLogger(
-				handlers.Empty(ls)))
+				auth.RequireAuth(ls,
+					handlers.Empty(ls))))
 			r.Route("/withdraw", func(r chi.Router) {
 				r.Post("/", logger.RequestLogger(
-					handlers.Empty(ls)))
+					auth.RequireAuth(ls,
+						handlers.Empty(ls))))
 			})
 		})
 
 		r.Route("/withdrawals", func(r chi.Router) {
 			r.Get("/", logger.RequestLogger(
-				handlers.Empty(ls)))
+				auth.RequireAuth(ls,
+					handlers.Empty(ls))))
 		})
 
 	})
