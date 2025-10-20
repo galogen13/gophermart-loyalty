@@ -78,7 +78,7 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func (s *JWTAuthService) CheckTokenInRequest(r *http.Request) (context.Context, error) {
+func (s *JWTAuthService) ValidateTokenInRequest(r *http.Request) (context.Context, error) {
 	tokenString := s.extractTokenFromRequest(r)
 
 	if tokenString == "" {
@@ -87,7 +87,7 @@ func (s *JWTAuthService) CheckTokenInRequest(r *http.Request) (context.Context, 
 
 	claims, err := s.validateToken(tokenString)
 	if err != nil {
-		return nil, ErrInvalidToken
+		return nil, fmt.Errorf("error validating token: %w", err)
 	}
 
 	ctx := context.WithValue(r.Context(), userClaimsKey, claims)
@@ -127,7 +127,7 @@ func (s *JWTAuthService) validateToken(tokenString string) (*Claims, error) {
 
 func RequireAuth(ls handlers.LoyaltyService, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx, err := ls.CheckTokenInRequest(r)
+		ctx, err := ls.ValidateTokenInRequest(r)
 		if err != nil {
 			if errors.Is(err, ErrAuthorizationTokenRequired) || errors.Is(err, ErrInvalidToken) {
 				logger.Log.Info("Error validating token", zap.Error(err))

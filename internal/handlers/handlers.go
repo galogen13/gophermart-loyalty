@@ -20,7 +20,7 @@ type LoyaltyService interface {
 
 type AuthService interface {
 	SetTokenInResponseCookie(w http.ResponseWriter, user *market.User) error
-	CheckTokenInRequest(r *http.Request) (context.Context, error)
+	ValidateTokenInRequest(r *http.Request) (context.Context, error)
 }
 
 func RegisterUserHandler(ls LoyaltyService) http.HandlerFunc {
