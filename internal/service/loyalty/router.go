@@ -17,46 +17,35 @@ import (
 func loyaltyRouter(ls handlers.LoyaltyService) *chi.Mux {
 	r := chi.NewRouter()
 
-	r.NotFound(logger.RequestLogger(notFoundHandler()))
-	r.MethodNotAllowed(logger.RequestLogger(methodNotAllowedHandler()))
+	r.Use(logger.RequestLogger)
+
+	r.NotFound(notFoundHandler())
+	r.MethodNotAllowed(methodNotAllowedHandler())
 
 	r.Route("/api/user", func(r chi.Router) {
 
 		r.Route("/register", func(r chi.Router) {
-			r.Post("/", logger.RequestLogger(
-				handlers.RegisterUserHandler(ls)))
+			r.Post("/", handlers.RegisterUserHandler(ls))
 		})
 
 		r.Route("/login", func(r chi.Router) {
-			r.Post("/", logger.RequestLogger(
-				handlers.LoginUserHandler(ls)))
+			r.Post("/", handlers.LoginUserHandler(ls))
 		})
 
 		r.Route("/orders", func(r chi.Router) {
-
-			r.Post("/", logger.RequestLogger(
-				auth.RequireAuth(ls,
-					handlers.Empty(ls))))
-			r.Get("/", logger.RequestLogger(
-				auth.RequireAuth(ls,
-					handlers.Empty(ls))))
+			r.Post("/", auth.RequireAuth(ls, handlers.AddOrderHandler(ls)))
+			r.Get("/", auth.RequireAuth(ls, handlers.GetUserOrdersHandler(ls)))
 		})
 
 		r.Route("/balance", func(r chi.Router) {
-			r.Get("/", logger.RequestLogger(
-				auth.RequireAuth(ls,
-					handlers.Empty(ls))))
+			r.Get("/", auth.RequireAuth(ls, handlers.Empty(ls)))
 			r.Route("/withdraw", func(r chi.Router) {
-				r.Post("/", logger.RequestLogger(
-					auth.RequireAuth(ls,
-						handlers.Empty(ls))))
+				r.Post("/", auth.RequireAuth(ls, handlers.Empty(ls)))
 			})
 		})
 
 		r.Route("/withdrawals", func(r chi.Router) {
-			r.Get("/", logger.RequestLogger(
-				auth.RequireAuth(ls,
-					handlers.Empty(ls))))
+			r.Get("/", auth.RequireAuth(ls, handlers.Empty(ls)))
 		})
 
 	})

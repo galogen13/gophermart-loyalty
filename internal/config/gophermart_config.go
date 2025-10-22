@@ -1,49 +1,58 @@
 package config
 
 import (
-	"flag"
-
-	"github.com/caarlos0/env/v6"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
 type GophermartConfig struct {
-	RunAddress           string `env:"RUN_ADDRESS"`
-	DatabaseURI          string `env:"DATABASE_URI"`
-	AccrualSystemAddress string `env:"ACCRUAL_SYSTEM_ADDRESS"`
-	JWTSecret            string `env:"JWT_SECRET"`
+	RunAddress           string `mapstructure:"address"`
+	DatabaseURI          string `mapstructure:"database"`
+	AccrualSystemAddress string `mapstructure:"accrual"`
+	JWTSecret            string `mapstructure:"secret"`
 }
 
 func GetGophermartConfig() (*GophermartConfig, error) {
 
+	flags := map[string]struct {
+		shorthand    string
+		defaultValue any
+		description  string
+		envVar       string
+	}{
+		"address":  {"a", "localhost:8080", "Server address", "RUN_ADDRESS"},
+		"database": {"d", "", "Database URI", "DATABASE_URI"},
+		"accrual":  {"r", "", "Accrual system address", "ACCRUAL_SYSTEM_ADDRESS"},
+		"secret":   {"s", "gophermart-secret-key", "Secret key for jwt", "SECRET_KEY"}, // значение по умолчанию указывать не стоило, но для автотестов пришлось
+	}
+
+	for name, config := range flags {
+		switch v := config.defaultValue.(type) {
+		case string:
+			pflag.StringP(name, config.shorthand, v, config.description)
+		case bool:
+			pflag.BoolP(name, config.shorthand, v, config.description)
+		case int:
+			pflag.IntP(name, config.shorthand, v, config.description)
+		}
+	}
+
+	pflag.Parse()
+
+	v := viper.New()
+	v.BindPFlags(pflag.CommandLine)
+	v.AutomaticEnv()
+
+	for flagName, config := range flags {
+		v.BindEnv(flagName, config.envVar)
+	}
+
 	var cfg GophermartConfig
 
-	err := env.Parse(&cfg)
-	if err != nil {
+	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, err
 	}
 
-	runAddressFlag := flag.String("a", "localhost:8080", "host address")
-	databaseURIFlag := flag.String("d", "", "database URI")
-	accrualSystemAddressFlag := flag.String("r", "", "accrual system address")
-	jwtSecretFlag := flag.String("j", "gophermart-secret-key", "accrual system address")
-
-	flag.Parse()
-
-	if cfg.RunAddress == "" {
-		cfg.RunAddress = *runAddressFlag
-	}
-
-	if cfg.DatabaseURI == "" {
-		cfg.DatabaseURI = *databaseURIFlag
-	}
-
-	if cfg.AccrualSystemAddress == "" {
-		cfg.AccrualSystemAddress = *accrualSystemAddressFlag
-	}
-
-	if cfg.JWTSecret == "" {
-		cfg.JWTSecret = *jwtSecretFlag
-	}
-
 	return &cfg, nil
+
 }

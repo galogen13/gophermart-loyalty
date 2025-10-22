@@ -42,9 +42,9 @@ type (
 	}
 )
 
-func RequestLogger(next http.HandlerFunc) http.HandlerFunc {
+func RequestLogger(next http.Handler) http.Handler {
 
-	return func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		responseData := &responseData{
 			status: 0,
@@ -57,7 +57,7 @@ func RequestLogger(next http.HandlerFunc) http.HandlerFunc {
 
 		start := time.Now()
 
-		next(&lw, r)
+		next.ServeHTTP(&lw, r)
 
 		duration := time.Since(start)
 
@@ -69,7 +69,7 @@ func RequestLogger(next http.HandlerFunc) http.HandlerFunc {
 			zap.Int("size", responseData.size),
 		)
 
-	}
+	})
 }
 
 func (r *loggingResponseWriter) Write(b []byte) (int, error) {

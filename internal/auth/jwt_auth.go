@@ -59,8 +59,7 @@ func (s *JWTAuthService) generateToken(user *market.User) (string, error) {
 	expirationTime := time.Now().Add(24 * time.Hour)
 
 	claims := &Claims{
-		UserID:    *user.ID,
-		UserLogin: user.Login,
+		UserID: *user.ID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -73,8 +72,7 @@ func (s *JWTAuthService) generateToken(user *market.User) (string, error) {
 }
 
 type Claims struct {
-	UserID    int64  //`json:"user_id"`
-	UserLogin string //`json:"username"`
+	UserID int64 `json:"user_id"`
 	jwt.RegisteredClaims
 }
 
@@ -122,6 +120,22 @@ func (s *JWTAuthService) validateToken(tokenString string) (*Claims, error) {
 		return nil, ErrInvalidToken
 	}
 
+	return claims, nil
+}
+
+func (s *JWTAuthService) GetUserIDFromContext(ctx context.Context) (int64, error) {
+	claims, err := s.getClaimsFromContext(ctx)
+	if err != nil {
+		return 0, err
+	}
+	return claims.UserID, nil
+}
+
+func (s *JWTAuthService) getClaimsFromContext(ctx context.Context) (*Claims, error) {
+	claims, ok := ctx.Value(userClaimsKey).(*Claims)
+	if !ok {
+		return nil, fmt.Errorf("claims not found in context")
+	}
 	return claims, nil
 }
 

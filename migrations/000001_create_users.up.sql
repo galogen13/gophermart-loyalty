@@ -2,12 +2,9 @@ BEGIN;
 
 CREATE TABLE users
 (
-    id bigint NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 9223372036854775807 CACHE 1 ),
-    login varchar(50) NOT NULL,
-	password varchar(255) NOT NULL,
-	
-    CONSTRAINT users_id_pk PRIMARY KEY (id),
-	CONSTRAINT users_login_uniq UNIQUE (login)
+    id BIGSERIAL PRIMARY KEY,
+    login varchar(50) NOT NULL UNIQUE,
+	password varchar(255) NOT NULL
 );
 
 COMMIT;

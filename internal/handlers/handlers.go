@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 
 	"github.com/galogen13/gophermart-loyalty/internal/auth/password"
@@ -15,12 +16,15 @@ import (
 type LoyaltyService interface {
 	RegisterUser(ctx context.Context, user *market.User) error
 	LoginUser(ctx context.Context, user *market.User) error
+	AddOrder(ctx context.Context, order *market.Order) error
+	GetUserOrders(ctx context.Context, user *market.User) ([]*market.Order, error)
 	AuthService
 }
 
 type AuthService interface {
 	SetTokenInResponseCookie(w http.ResponseWriter, user *market.User) error
 	ValidateTokenInRequest(r *http.Request) (context.Context, error)
+	GetUserIDFromContext(ctx context.Context) (int64, error)
 }
 
 func RegisterUserHandler(ls LoyaltyService) http.HandlerFunc {
@@ -86,14 +90,6 @@ func LoginUserHandler(ls LoyaltyService) http.HandlerFunc {
 
 		incomingPass := user.Password
 
-		// hashedPassword, err := password.HashPassword(user.Password)
-		// if err != nil {
-		// 	logger.Log.Error("Error processing password", zap.Error(err))
-		// 	w.WriteHeader(http.StatusInternalServerError)
-		// 	return
-		// }
-		//user.Password = hashedPassword
-
 		err := ls.LoginUser(ctx, user)
 		if err != nil {
 			logger.Log.Info("Error login user", zap.Error(err))
@@ -121,6 +117,87 @@ func LoginUserHandler(ls LoyaltyService) http.HandlerFunc {
 		_, err = http.NoBody.WriteTo(w)
 		if err != nil {
 			logger.Log.Error("Error writing body", zap.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+	}
+}
+
+func AddOrderHandler(ls LoyaltyService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		b, err := io.ReadAll(r.Body)
+		if err != nil {
+			logger.Log.Error("Error reading body", zap.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		ctx := r.Context()
+
+		userID, err := ls.GetUserIDFromContext(ctx)
+		if err != nil {
+			logger.Log.Error("Error getting ID from context", zap.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		order := &market.Order{
+			Number: string(b),
+			UserID: &userID}
+
+		err = ls.AddOrder(ctx, order)
+		if err != nil {
+			if errors.Is(err, market.ErrOrderAlreadyExists) {
+				logger.Log.Info("Error adding order", zap.Error(err))
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+
+			if errors.Is(err, market.ErrOrderBelongsToAnotherUser) {
+				logger.Log.Info("Error adding order", zap.Error(err))
+				w.WriteHeader(http.StatusConflict)
+				return
+			}
+
+			logger.Log.Error("Error adding order", zap.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusAccepted)
+
+	}
+}
+
+func GetUserOrdersHandler(ls LoyaltyService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		ctx := r.Context()
+
+		userID, err := ls.GetUserIDFromContext(ctx)
+		if err != nil {
+			logger.Log.Error("Error getting ID from context", zap.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		user := &market.User{
+			ID: &userID}
+
+		orders, err := ls.GetUserOrders(ctx, user)
+		if err != nil {
+			logger.Log.Error("Error adding order", zap.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+
+		if err := json.NewEncoder(w).Encode(orders); err != nil {
+			logger.Log.Error("Error encoding user orders", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}

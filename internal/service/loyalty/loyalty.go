@@ -2,6 +2,7 @@ package loyalty
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -17,6 +18,9 @@ import (
 type Storage interface {
 	AddUser(ctx context.Context, user *market.User) error
 	GetUser(ctx context.Context, user *market.User) error
+	AddOrder(ctx context.Context, order *market.Order) error
+	GetUserOrders(ctx context.Context, user *market.User) ([]*market.Order, error)
+	GetOrderByNumber(ctx context.Context, order *market.Order) error
 }
 
 type GophermartLoyaltyService struct {
@@ -58,4 +62,39 @@ func (ls *GophermartLoyaltyService) LoginUser(ctx context.Context, user *market.
 	}
 
 	return nil
+}
+
+func (ls *GophermartLoyaltyService) AddOrder(ctx context.Context, order *market.Order) error {
+
+	existedOrder := &market.Order{Number: order.Number}
+	err := ls.Storage.GetOrderByNumber(ctx, existedOrder)
+	if err == nil {
+		if *order.UserID == *existedOrder.UserID {
+			return market.ErrOrderAlreadyExists
+		} else {
+			return market.ErrOrderBelongsToAnotherUser
+		}
+	} else {
+		if !errors.Is(err, market.ErrOrderNotExists) {
+			return fmt.Errorf("failed to get order: %w", err)
+		}
+	}
+
+	order.Status = market.OrderStatusNew
+
+	if err := ls.Storage.AddOrder(ctx, order); err != nil {
+		return fmt.Errorf("failed to add order: %w", err)
+	}
+
+	return nil
+}
+
+func (ls *GophermartLoyaltyService) GetUserOrders(ctx context.Context, user *market.User) ([]*market.Order, error) {
+
+	orders, err := ls.Storage.GetUserOrders(ctx, user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get orders: %w", err)
+	}
+
+	return orders, nil
 }

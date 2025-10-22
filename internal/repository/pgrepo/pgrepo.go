@@ -95,6 +95,91 @@ func (repo *PGRepo) GetUser(ctx context.Context, user *market.User) error {
 	return nil
 }
 
+func (repo *PGRepo) AddOrder(ctx context.Context, order *market.Order) error {
+
+	_, err := repo.pool.Exec(
+		ctx,
+		`INSERT INTO orders("number", status, user_id)
+		VALUES ($1, $2, $3);`,
+		order.Number, order.Status, order.UserID)
+
+	if err != nil {
+		if isDuplicateKeyError(err) {
+			return market.ErrOrderAlreadyExists
+		}
+		return fmt.Errorf("failed to execute add order: %w", err)
+	}
+
+	return nil
+}
+
+func (repo *PGRepo) GetUserOrders(ctx context.Context, user *market.User) ([]*market.Order, error) {
+
+	result := []*market.Order{}
+	rows, err := repo.pool.Query(ctx, `SELECT id, "number", status, accrual, uploaded_at, processed_at, user_id
+	FROM orders WHERE user_id = $1;`, user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get orders: %w", err)
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var (
+			qOrder market.Order
+		)
+
+		err = rows.Scan(
+			&qOrder.ID,
+			&qOrder.Number,
+			&qOrder.Status,
+			&qOrder.Accrual,
+			&qOrder.UploadedAt,
+			&qOrder.ProcessedAt,
+			&qOrder.UserID)
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan query result GetOrders: %w", err)
+		}
+
+		result = append(result, &qOrder)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (repo *PGRepo) GetOrderByNumber(ctx context.Context, order *market.Order) error {
+
+	row := repo.pool.QueryRow(
+		ctx,
+		`SELECT id, status, accrual, uploaded_at, processed_at, user_id
+		FROM orders WHERE number = $1;`,
+		order.Number)
+
+	var processedAt sql.NullTime
+
+	err := row.Scan(&order.ID, &order.Status, &order.Accrual, &order.UploadedAt, &processedAt, &order.UserID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return market.ErrOrderNotExists
+		}
+		return fmt.Errorf("failed to get order by number: %w", err)
+	}
+
+	if processedAt.Valid {
+		order.ProcessedAt = &processedAt.Time
+	} else {
+		order.ProcessedAt = nil
+	}
+
+	return nil
+
+}
+
 func (repo *PGRepo) runMigrations() error {
 	source, err := iofs.New(migrations.FS, ".")
 	if err != nil {
