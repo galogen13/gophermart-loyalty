@@ -7,7 +7,6 @@ CREATE TABLE orders
     status VARCHAR(15) NOT NULL,
     accrual DECIMAL(12,2) DEFAULT 0,
     uploaded_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    processed_at TIMESTAMPTZ,
     user_id BIGINT NOT NULL,
     
     FOREIGN KEY (user_id) REFERENCES users(id)

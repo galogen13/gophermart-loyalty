@@ -15,13 +15,12 @@ const (
 type OrderStatus string
 
 type Order struct {
-	ID          int64       `json:"-"`
-	Number      string      `json:"number"`
-	Status      OrderStatus `json:"status"`
-	Accrual     float64     `json:"accrual,omitempty"`
-	UploadedAt  time.Time   `json:"uploaded_at"`
-	ProcessedAt *time.Time  `json:"processed_at,omitempty"`
-	UserID      *int64      `json:"-"`
+	ID         int64       `json:"-"`
+	Number     string      `json:"number"`
+	Status     OrderStatus `json:"status"`
+	Accrual    float64     `json:"accrual,omitempty"`
+	UploadedAt time.Time   `json:"uploaded_at"`
+	UserID     *int64      `json:"-"`
 }
 
 var (

@@ -116,7 +116,7 @@ func (repo *PGRepo) AddOrder(ctx context.Context, order *market.Order) error {
 func (repo *PGRepo) GetUserOrders(ctx context.Context, user *market.User) ([]*market.Order, error) {
 
 	result := []*market.Order{}
-	rows, err := repo.pool.Query(ctx, `SELECT id, "number", status, accrual, uploaded_at, processed_at, user_id
+	rows, err := repo.pool.Query(ctx, `SELECT id, "number", status, accrual, uploaded_at, user_id
 	FROM orders WHERE user_id = $1;`, user.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get orders: %w", err)
@@ -135,7 +135,6 @@ func (repo *PGRepo) GetUserOrders(ctx context.Context, user *market.User) ([]*ma
 			&qOrder.Status,
 			&qOrder.Accrual,
 			&qOrder.UploadedAt,
-			&qOrder.ProcessedAt,
 			&qOrder.UserID)
 
 		if err != nil {
@@ -160,20 +159,12 @@ func (repo *PGRepo) GetOrderByNumber(ctx context.Context, order *market.Order) e
 		FROM orders WHERE number = $1;`,
 		order.Number)
 
-	var processedAt sql.NullTime
-
-	err := row.Scan(&order.ID, &order.Status, &order.Accrual, &order.UploadedAt, &processedAt, &order.UserID)
+	err := row.Scan(&order.ID, &order.Status, &order.Accrual, &order.UploadedAt, &order.UserID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return market.ErrOrderNotExists
 		}
 		return fmt.Errorf("failed to get order by number: %w", err)
-	}
-
-	if processedAt.Valid {
-		order.ProcessedAt = &processedAt.Time
-	} else {
-		order.ProcessedAt = nil
 	}
 
 	return nil
