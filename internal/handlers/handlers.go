@@ -18,13 +18,16 @@ type LoyaltyService interface {
 	LoginUser(ctx context.Context, user *market.User) error
 	AddOrder(ctx context.Context, order *market.Order) error
 	GetUserOrders(ctx context.Context, user *market.User) ([]*market.Order, error)
+	GetUserBalance(ctx context.Context, user *market.User) (*market.Balance, error)
+	GetUserWithdrawals(ctx context.Context, user *market.User) ([]*market.Withdrawal, error)
+	ExecuteWithdrawal(ctx context.Context, user *market.User, withdrawal *market.Withdrawal) error
 	AuthService
 }
 
 type AuthService interface {
 	SetTokenInResponseCookie(w http.ResponseWriter, user *market.User) error
 	ValidateTokenInRequest(r *http.Request) (context.Context, error)
-	GetUserIDFromContext(ctx context.Context) (int64, error)
+	GetUserFromContext(ctx context.Context) (*market.User, error)
 }
 
 func RegisterUserHandler(ls LoyaltyService) http.HandlerFunc {
@@ -136,7 +139,7 @@ func AddOrderHandler(ls LoyaltyService) http.HandlerFunc {
 
 		ctx := r.Context()
 
-		userID, err := ls.GetUserIDFromContext(ctx)
+		user, err := ls.GetUserFromContext(ctx)
 		if err != nil {
 			logger.Log.Error("Error getting ID from context", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
@@ -145,7 +148,7 @@ func AddOrderHandler(ls LoyaltyService) http.HandlerFunc {
 
 		order := &market.Order{
 			Number: string(b),
-			UserID: &userID}
+			UserID: user.ID}
 
 		err = ls.AddOrder(ctx, order)
 		if err != nil {
@@ -158,6 +161,12 @@ func AddOrderHandler(ls LoyaltyService) http.HandlerFunc {
 			if errors.Is(err, market.ErrOrderBelongsToAnotherUser) {
 				logger.Log.Info("Error adding order", zap.Error(err))
 				w.WriteHeader(http.StatusConflict)
+				return
+			}
+
+			if errors.Is(err, market.ErrOrderIncorrectNumber) {
+				logger.Log.Info("Error adding order", zap.Error(err))
+				w.WriteHeader(http.StatusUnprocessableEntity)
 				return
 			}
 
@@ -176,15 +185,12 @@ func GetUserOrdersHandler(ls LoyaltyService) http.HandlerFunc {
 
 		ctx := r.Context()
 
-		userID, err := ls.GetUserIDFromContext(ctx)
+		user, err := ls.GetUserFromContext(ctx)
 		if err != nil {
 			logger.Log.Error("Error getting ID from context", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-
-		user := &market.User{
-			ID: &userID}
 
 		orders, err := ls.GetUserOrders(ctx, user)
 		if err != nil {
@@ -205,10 +211,120 @@ func GetUserOrdersHandler(ls LoyaltyService) http.HandlerFunc {
 	}
 }
 
-func Empty(ls LoyaltyService) http.HandlerFunc {
+func GetBalanceHandler(ls LoyaltyService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+
+		ctx := r.Context()
+
+		user, err := ls.GetUserFromContext(ctx)
+		if err != nil {
+			logger.Log.Error("Error getting user from context", zap.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		balance, err := ls.GetUserBalance(ctx, user)
+		if err != nil {
+			logger.Log.Error("Error getting user balance", zap.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+
+		if err := json.NewEncoder(w).Encode(balance); err != nil {
+			logger.Log.Error("Error encoding users balance", zap.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+	}
+}
+
+func GetWithdrawalsHandler(ls LoyaltyService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		ctx := r.Context()
+
+		user, err := ls.GetUserFromContext(ctx)
+		if err != nil {
+			logger.Log.Error("Error getting user from context", zap.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		withdrawals, err := ls.GetUserWithdrawals(ctx, user)
+		if err != nil {
+			if errors.Is(err, market.ErrNoWithdrawals) {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+
+			logger.Log.Error("Error getting users withdrawals", zap.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+
+		if err := json.NewEncoder(w).Encode(withdrawals); err != nil {
+			logger.Log.Error("Error encoding users balance", zap.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+	}
+}
+
+func ExecuteWithdrawalHandler(ls LoyaltyService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		ctx := r.Context()
+
+		user, err := ls.GetUserFromContext(ctx)
+		if err != nil {
+			logger.Log.Error("Error getting user from context", zap.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		withdrawal := &market.Withdrawal{}
+		if err := json.NewDecoder(r.Body).Decode(withdrawal); err != nil {
+			logger.Log.Error("JSON decoding error", zap.Error(err))
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		withdrawal.UserID = user.ID
+
+		err = ls.ExecuteWithdrawal(ctx, user, withdrawal)
+		if err != nil {
+			if errors.Is(err, market.ErrOrderIncorrectNumber) {
+				logger.Log.Info("Error executing withdrawals", zap.Error(err))
+				w.WriteHeader(http.StatusUnprocessableEntity)
+				return
+			}
+
+			if errors.Is(err, market.ErrWithdrawalInsufficientFunds) {
+				logger.Log.Info("Error executing withdrawals", zap.Error(err))
+				w.WriteHeader(http.StatusPaymentRequired)
+				return
+			}
+
+			logger.Log.Error("Error executing withdrawals", zap.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
 		w.WriteHeader(http.StatusOK)
 
+		_, err = http.NoBody.WriteTo(w)
+		if err != nil {
+			logger.Log.Error("Error writing body", zap.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 }

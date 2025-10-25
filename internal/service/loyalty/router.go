@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/galogen13/gophermart-loyalty/internal/auth"
+	"github.com/galogen13/gophermart-loyalty/internal/compression"
 	"github.com/galogen13/gophermart-loyalty/internal/handlers"
 	"github.com/galogen13/gophermart-loyalty/internal/logger"
 	"github.com/go-chi/chi/v5"
@@ -34,18 +35,18 @@ func loyaltyRouter(ls handlers.LoyaltyService) *chi.Mux {
 
 		r.Route("/orders", func(r chi.Router) {
 			r.Post("/", auth.RequireAuth(ls, handlers.AddOrderHandler(ls)))
-			r.Get("/", auth.RequireAuth(ls, handlers.GetUserOrdersHandler(ls)))
+			r.Get("/", auth.RequireAuth(ls, compression.GzipCompress(handlers.GetUserOrdersHandler(ls))))
 		})
 
 		r.Route("/balance", func(r chi.Router) {
-			r.Get("/", auth.RequireAuth(ls, handlers.Empty(ls)))
+			r.Get("/", auth.RequireAuth(ls, handlers.GetBalanceHandler(ls)))
 			r.Route("/withdraw", func(r chi.Router) {
-				r.Post("/", auth.RequireAuth(ls, handlers.Empty(ls)))
+				r.Post("/", auth.RequireAuth(ls, handlers.ExecuteWithdrawalHandler(ls)))
 			})
 		})
 
 		r.Route("/withdrawals", func(r chi.Router) {
-			r.Get("/", auth.RequireAuth(ls, handlers.Empty(ls)))
+			r.Get("/", auth.RequireAuth(ls, compression.GzipCompress(handlers.GetWithdrawalsHandler(ls))))
 		})
 
 	})

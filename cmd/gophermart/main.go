@@ -4,9 +4,11 @@ import (
 	"context"
 	"log"
 
+	"github.com/galogen13/gophermart-loyalty/internal/auth"
 	"github.com/galogen13/gophermart-loyalty/internal/config"
 	"github.com/galogen13/gophermart-loyalty/internal/logger"
 	"github.com/galogen13/gophermart-loyalty/internal/repository/pgrepo"
+	"github.com/galogen13/gophermart-loyalty/internal/service/accrual"
 	"github.com/galogen13/gophermart-loyalty/internal/service/loyalty"
 )
 
@@ -30,14 +32,20 @@ func run() error {
 
 	var storage loyalty.Storage
 
-	storage, err = pgrepo.NewPGRepo(context.Background(), config.DatabaseURI)
+	ctx := context.Background()
+
+	storage, err = pgrepo.NewPGRepo(ctx, config.DatabaseURI)
 	if err != nil {
 		return err
 	}
 
-	ls := loyalty.NewGophermartLoyaltyService(config, storage)
+	accrualService := accrual.NewAccrualService(config.AccrualSystemAddress, 5)
 
-	if err := ls.Start(); err != nil {
+	authService := auth.NewJWTAuthService(config.JWTSecret)
+
+	ls := loyalty.NewGophermartLoyaltyService(config, storage, accrualService, authService)
+
+	if err := ls.Start(ctx); err != nil {
 		return err
 	}
 

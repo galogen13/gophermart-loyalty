@@ -34,8 +34,7 @@ func (c *compressWriter) Write(p []byte) (int, error) {
 
 func (c *compressWriter) WriteHeader(statusCode int) {
 	contentType := c.w.Header().Get("Content-Type")
-	c.compressResponce = strings.Contains(contentType, "application/json") ||
-		strings.Contains(contentType, "text/html")
+	c.compressResponce = strings.Contains(contentType, "application/json")
 	if c.compressResponce {
 		c.w.Header().Set("Content-Encoding", "gzip")
 	}
@@ -78,7 +77,7 @@ func (c *compressReader) Close() error {
 	return c.zr.Close()
 }
 
-func GzipMiddleware(h http.HandlerFunc) http.HandlerFunc {
+func GzipCompress(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		contentEncoding := r.Header.Get("Content-Encoding")

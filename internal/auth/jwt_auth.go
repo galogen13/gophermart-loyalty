@@ -18,7 +18,7 @@ import (
 
 const (
 	cookieTokenName            = "jwt_token"
-	userClaimsKey   contextKey = "user_claims"
+	userContextKey  contextKey = "current_user"
 )
 
 var (
@@ -88,7 +88,9 @@ func (s *JWTAuthService) ValidateTokenInRequest(r *http.Request) (context.Contex
 		return nil, fmt.Errorf("error validating token: %w", err)
 	}
 
-	ctx := context.WithValue(r.Context(), userClaimsKey, claims)
+	user := market.User{ID: &claims.UserID}
+
+	ctx := context.WithValue(r.Context(), userContextKey, user)
 
 	return ctx, nil
 }
@@ -123,20 +125,12 @@ func (s *JWTAuthService) validateToken(tokenString string) (*Claims, error) {
 	return claims, nil
 }
 
-func (s *JWTAuthService) GetUserIDFromContext(ctx context.Context) (int64, error) {
-	claims, err := s.getClaimsFromContext(ctx)
-	if err != nil {
-		return 0, err
-	}
-	return claims.UserID, nil
-}
-
-func (s *JWTAuthService) getClaimsFromContext(ctx context.Context) (*Claims, error) {
-	claims, ok := ctx.Value(userClaimsKey).(*Claims)
+func (s *JWTAuthService) GetUserFromContext(ctx context.Context) (*market.User, error) {
+	user, ok := ctx.Value(userContextKey).(market.User)
 	if !ok {
-		return nil, fmt.Errorf("claims not found in context")
+		return nil, fmt.Errorf("user not found in context")
 	}
-	return claims, nil
+	return &user, nil
 }
 
 func RequireAuth(ls handlers.LoyaltyService, next http.HandlerFunc) http.HandlerFunc {

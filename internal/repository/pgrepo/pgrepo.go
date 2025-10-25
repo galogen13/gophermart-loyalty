@@ -80,7 +80,7 @@ func (repo *PGRepo) AddUser(ctx context.Context, user *market.User) error {
 	return nil
 }
 
-func (repo *PGRepo) GetUser(ctx context.Context, user *market.User) error {
+func (repo *PGRepo) GetUserByLogin(ctx context.Context, user *market.User) error {
 
 	row := repo.pool.QueryRow(ctx, `SELECT id, login, password
 		FROM users WHERE login=$1;`, user.Login)
@@ -113,11 +113,12 @@ func (repo *PGRepo) AddOrder(ctx context.Context, order *market.Order) error {
 	return nil
 }
 
-func (repo *PGRepo) GetUserOrders(ctx context.Context, user *market.User) ([]*market.Order, error) {
+func (repo *PGRepo) GetOrdersByUserID(ctx context.Context, user *market.User) ([]*market.Order, error) {
 
 	result := []*market.Order{}
 	rows, err := repo.pool.Query(ctx, `SELECT id, "number", status, accrual, uploaded_at, user_id
-	FROM orders WHERE user_id = $1;`, user.ID)
+	FROM orders WHERE user_id = $1
+	ORDER BY uploaded_at DESC;`, user.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get orders: %w", err)
 	}
@@ -155,7 +156,7 @@ func (repo *PGRepo) GetOrderByNumber(ctx context.Context, order *market.Order) e
 
 	row := repo.pool.QueryRow(
 		ctx,
-		`SELECT id, status, accrual, uploaded_at, processed_at, user_id
+		`SELECT id, status, accrual, uploaded_at, user_id
 		FROM orders WHERE number = $1;`,
 		order.Number)
 
@@ -169,6 +170,141 @@ func (repo *PGRepo) GetOrderByNumber(ctx context.Context, order *market.Order) e
 
 	return nil
 
+}
+
+func (repo *PGRepo) GetBalanceByUserID(ctx context.Context, user *market.User) (*market.Balance, error) {
+
+	row := repo.pool.QueryRow(
+		ctx,
+		`SELECT COALESCE(SUM(t.current), 0) AS current, COALESCE(SUM(t.withdrawn), 0) AS withdrawn
+			FROM(SELECT accrual AS current, 0 AS withdrawn
+				FROM orders 
+				WHERE user_id = $1 AND status = $2 
+				UNION ALL 
+				SELECT -sum, sum
+				FROM withdrawals 
+				WHERE user_id = $1) AS t;`,
+		user.ID, market.OrderStatusProcessed)
+
+	var balance market.Balance
+
+	err := row.Scan(&balance.Current, &balance.Withdrawn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user balance: %w", err)
+	}
+
+	return &balance, nil
+
+}
+
+func (repo *PGRepo) GetWithdrawalsByUserID(ctx context.Context, user *market.User) ([]*market.Withdrawal, error) {
+
+	result := []*market.Withdrawal{}
+	rows, err := repo.pool.Query(ctx, `SELECT order_number, sum, processed_at, user_id
+		FROM withdrawals 
+		WHERE user_id = $1
+		ORDER BY processed_at DESC;`,
+		user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get withdrawals: %w", err)
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var withdrawal market.Withdrawal
+
+		err = rows.Scan(
+			&withdrawal.OrderNumber,
+			&withdrawal.Sum,
+			&withdrawal.ProcessedAt,
+			&withdrawal.UserID)
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan query result GetWithdrawalsByUserID: %w", err)
+		}
+
+		result = append(result, &withdrawal)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+
+}
+
+func (repo *PGRepo) GetOrdersByStatuses(ctx context.Context, statuses []market.OrderStatus) ([]*market.Order, error) {
+	result := []*market.Order{}
+	rows, err := repo.pool.Query(ctx, `SELECT id, "number", status, accrual, uploaded_at, user_id
+		FROM orders WHERE status = ANY($1);`,
+		statuses)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get orders by statuses: %w", err)
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var order market.Order
+
+		err = rows.Scan(
+			&order.ID,
+			&order.Number,
+			&order.Status,
+			&order.Accrual,
+			&order.UploadedAt,
+			&order.UserID,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan query result GetOrdersByStatuses: %w", err)
+		}
+
+		result = append(result, &order)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (repo *PGRepo) UpdateOrderAccrual(ctx context.Context, orderAccrual market.OrderAccrual) error {
+
+	_, err := repo.pool.Exec(ctx,
+		`UPDATE orders
+		SET status=$1, accrual=$2
+		WHERE number = $3;`,
+		orderAccrual.Status, orderAccrual.Accrual, orderAccrual.Number,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to execute UpdateOrderAccrual: %w", err)
+	}
+
+	return nil
+}
+
+func (repo *PGRepo) AddWithdrawal(ctx context.Context, withdrawal *market.Withdrawal) error {
+
+	_, err := repo.pool.Exec(
+		ctx,
+		`INSERT INTO withdrawals(
+		order_number, sum, user_id)
+		VALUES ($1, $2, $3);`,
+		withdrawal.OrderNumber, withdrawal.Sum, withdrawal.UserID)
+
+	if err != nil {
+		if isDuplicateKeyError(err) {
+			return market.ErrWithdrawalAlreadyExists
+		}
+		return fmt.Errorf("failed to execute add withdrawal: %w", err)
+	}
+
+	return nil
 }
 
 func (repo *PGRepo) runMigrations() error {
