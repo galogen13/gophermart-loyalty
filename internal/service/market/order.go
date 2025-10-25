@@ -1,6 +1,7 @@
 package market
 
 import (
+	"encoding/json"
 	"errors"
 	"strconv"
 	"strings"
@@ -23,6 +24,36 @@ type Order struct {
 	Accrual    float64     `json:"accrual,omitempty"`
 	UploadedAt time.Time   `json:"uploaded_at"`
 	UserID     *int64      `json:"-"`
+}
+
+func (order Order) MarshalJSON() ([]byte, error) {
+	type Alias Order
+	return json.Marshal(&struct {
+		Alias
+		UploadedAt string `json:"uploaded_at"`
+	}{
+		Alias:      (Alias)(order),
+		UploadedAt: order.UploadedAt.Format(time.RFC3339),
+	})
+}
+
+func (order *Order) UnmarshalJSON(data []byte) error {
+	type Alias Order
+	aux := &struct {
+		UploadedAt string `json:"uploaded_at"`
+		*Alias
+	}{
+		Alias: (*Alias)(order),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	parsed, err := time.Parse(time.RFC3339, aux.UploadedAt)
+	if err != nil {
+		return err
+	}
+	order.UploadedAt = parsed
+	return nil
 }
 
 func OrderNumberLuhnCheck(number string) error {
@@ -77,6 +108,36 @@ type Withdrawal struct {
 	Sum         float64   `json:"sum"`
 	ProcessedAt time.Time `json:"processed_at"`
 	UserID      *int64    `json:"-"`
+}
+
+func (withdrawal Withdrawal) MarshalJSON() ([]byte, error) {
+	type Alias Withdrawal
+	return json.Marshal(&struct {
+		Alias
+		ProcessedAt string `json:"processed_at"`
+	}{
+		Alias:       (Alias)(withdrawal),
+		ProcessedAt: withdrawal.ProcessedAt.Format(time.RFC3339),
+	})
+}
+
+func (withdrawal *Withdrawal) UnmarshalJSON(data []byte) error {
+	type Alias Withdrawal
+	aux := &struct {
+		ProcessedAt string `json:"processed_at"`
+		*Alias
+	}{
+		Alias: (*Alias)(withdrawal),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	parsed, err := time.Parse(time.RFC3339, aux.ProcessedAt)
+	if err != nil {
+		return err
+	}
+	withdrawal.ProcessedAt = parsed
+	return nil
 }
 
 var (

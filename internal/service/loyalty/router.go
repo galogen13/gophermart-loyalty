@@ -10,11 +10,6 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// const (
-// 	reqContentTypeTextPlain  = "text/plain"
-// 	respContentTypeTextPlain = "text/plain; charset=utf-8"
-// )
-
 func loyaltyRouter(ls handlers.LoyaltyService) *chi.Mux {
 	r := chi.NewRouter()
 
@@ -56,14 +51,12 @@ func loyaltyRouter(ls handlers.LoyaltyService) *chi.Mux {
 
 func notFoundHandler() http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		// w.Header().Set("Content-Type", respContentTypeTextPlain)
 		w.WriteHeader(http.StatusNotFound)
 	})
 }
 
 func methodNotAllowedHandler() http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		// w.Header().Set("Content-Type", respContentTypeTextPlain)
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	})
 }

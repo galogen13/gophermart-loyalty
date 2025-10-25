@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -29,7 +28,6 @@ type AccrualService struct {
 	pathTempl    string
 	pauseCond    *sync.Cond
 	isPaused     bool
-	pauseUntil   time.Time
 }
 
 func NewAccrualService(host string, workersCount int) *AccrualService {
@@ -61,7 +59,7 @@ type OrderAccrual struct {
 }
 
 var (
-	ErrOrderNotFound = errors.New("order not foung in accrual system")
+	ErrOrderNotFound = errors.New("order not found in accrual system")
 )
 
 func (as *AccrualService) Start(ctx context.Context) {
@@ -98,17 +96,17 @@ func (as *AccrualService) worker(ctx context.Context) {
 				continue
 			}
 
-			oa := market.OrderAccrual{}
-			oa.Number = result.orderAccrual.Number
-			oa.Accrual = result.orderAccrual.Accrual
+			orderAAccrual := market.OrderAccrual{}
+			orderAAccrual.Number = result.orderAccrual.Number
+			orderAAccrual.Accrual = result.orderAccrual.Accrual
 			status, err := convertAccrualStatusToOrderStatus(result.orderAccrual.Status)
 			if err != nil {
 				logger.Log.Error("error getting order accruals", zap.Error(result.err), zap.String("order number", job.OrderNumber))
 				continue
 			}
-			oa.Status = status
+			orderAAccrual.Status = status
 
-			as.accruals <- oa
+			as.accruals <- orderAAccrual
 		}
 	}
 }
@@ -199,18 +197,6 @@ func (as *AccrualService) checkPause() {
 	defer as.pauseCond.L.Unlock()
 
 	for as.isPaused {
-		if time.Now().After(as.pauseUntil) {
-			as.isPaused = false
-			break
-		}
-
-		// Ждем либо до окончания паузы, либо пока нас разбудят
-		if time.Until(as.pauseUntil) > 0 {
-			time.AfterFunc(time.Until(as.pauseUntil), func() {
-				as.pauseCond.Broadcast()
-			})
-		}
-
 		as.pauseCond.Wait()
 	}
 }
@@ -221,14 +207,20 @@ func (as *AccrualService) activatePause(duration time.Duration) {
 
 	if !as.isPaused {
 		as.isPaused = true
-		as.pauseUntil = time.Now().Add(duration)
-		log.Printf("Активирована пауза до %s", as.pauseUntil.Format("15:04:05"))
+		logger.Log.Info("accrual system pause activated", zap.Duration("duration", duration))
 
-		go func() {
-			time.Sleep(duration)
-			as.pauseCond.Broadcast()
-		}()
+		time.AfterFunc(duration, func() {
+			as.deactivatePause()
+		})
 	}
+}
+
+func (as *AccrualService) deactivatePause() {
+	as.pauseCond.L.Lock()
+	as.isPaused = false
+	logger.Log.Info("accrual system pause deactivated")
+	as.pauseCond.Broadcast()
+	as.pauseCond.L.Unlock()
 }
 
 func (as *AccrualService) AddJob(job Job) {
