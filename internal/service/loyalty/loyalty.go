@@ -60,7 +60,7 @@ func (ls *GophermartLoyaltyService) accrualsGetter(ctx context.Context) {
 
 	ls.AccrualService.Start(ctx)
 
-	tickerPoll := time.NewTicker(1 * time.Minute)
+	tickerPoll := time.NewTicker(5 * time.Second)
 
 	for {
 		select {
