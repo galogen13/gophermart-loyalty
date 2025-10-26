@@ -40,7 +40,7 @@ func (order Order) MarshalJSON() ([]byte, error) {
 func (order *Order) UnmarshalJSON(data []byte) error {
 	type Alias Order
 	aux := &struct {
-		UploadedAt string `json:"uploaded_at"`
+		UploadedAt string `json:"-"`
 		*Alias
 	}{
 		Alias: (*Alias)(order),
@@ -48,11 +48,11 @@ func (order *Order) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
-	parsed, err := time.Parse(time.RFC3339, aux.UploadedAt)
-	if err != nil {
-		return err
-	}
-	order.UploadedAt = parsed
+	// parsed, err := time.Parse(time.RFC3339, aux.UploadedAt)
+	// if err != nil {
+	// 	return err
+	// }
+	// order.UploadedAt = parsed
 	return nil
 }
 
@@ -106,7 +106,7 @@ var (
 type Withdrawal struct {
 	OrderNumber string    `json:"order"`
 	Sum         float64   `json:"sum"`
-	ProcessedAt time.Time `json:"processed_at"`
+	ProcessedAt time.Time `json:"processed_at,omitempty"`
 	UserID      *int64    `json:"-"`
 }
 
@@ -124,7 +124,7 @@ func (withdrawal Withdrawal) MarshalJSON() ([]byte, error) {
 func (withdrawal *Withdrawal) UnmarshalJSON(data []byte) error {
 	type Alias Withdrawal
 	aux := &struct {
-		ProcessedAt string `json:"processed_at"`
+		ProcessedAt string `json:"-"`
 		*Alias
 	}{
 		Alias: (*Alias)(withdrawal),
@@ -132,11 +132,11 @@ func (withdrawal *Withdrawal) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
-	parsed, err := time.Parse(time.RFC3339, aux.ProcessedAt)
-	if err != nil {
-		return err
-	}
-	withdrawal.ProcessedAt = parsed
+	// parsed, err := time.Parse(time.RFC3339, aux.ProcessedAt)
+	// if err != nil {
+	// 	return err
+	// }
+	// withdrawal.ProcessedAt = parsed
 	return nil
 }
 
