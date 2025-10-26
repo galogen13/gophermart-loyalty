@@ -129,13 +129,6 @@ func convertAccrualStatusToOrderStatus(status string) (market.OrderStatus, error
 
 func (as *AccrualService) getOrderAccrual(ctx context.Context, job Job) Result {
 
-	// client := resty.New()
-	// client.SetRedirectPolicy(resty.RedirectPolicyFunc(
-	// 	func(req *http.Request, _ []*http.Request) error {
-	// 		req.Method = http.MethodPost
-	// 		return nil
-	// 	}))
-
 	result := Result{}
 
 	baseURL, err := url.Parse(as.host)
@@ -151,11 +144,6 @@ func (as *AccrualService) getOrderAccrual(ctx context.Context, job Job) Result {
 
 	baseURL = baseURL.JoinPath(pathSeq...)
 
-	// baseURL := &url.URL{
-	// 	Scheme: "http",
-	// 	Host:   as.host,
-	// 	Path:   path,
-	// }
 	fullURL := baseURL.String()
 
 	resp, err := retry.DoWithResult(

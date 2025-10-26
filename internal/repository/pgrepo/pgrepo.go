@@ -288,20 +288,34 @@ func (repo *PGRepo) UpdateOrderAccrual(ctx context.Context, orderAccrual market.
 	return nil
 }
 
-func (repo *PGRepo) AddWithdrawal(ctx context.Context, withdrawal *market.Withdrawal) error {
+func (repo *PGRepo) AddWithdrawalWithBalanceCheck(ctx context.Context, withdrawal *market.Withdrawal) error {
 
-	_, err := repo.pool.Exec(
+	result, err := repo.pool.Exec(
 		ctx,
-		`INSERT INTO withdrawals(
-		order_number, sum, user_id)
-		VALUES ($1, $2, $3);`,
-		withdrawal.OrderNumber, withdrawal.Sum, withdrawal.UserID)
+		`INSERT INTO withdrawals (order_number, sum, user_id)
+        SELECT $1, $2, $3
+        WHERE (
+            SELECT COALESCE(SUM(t.current), 0) AS current
+			FROM(SELECT accrual AS current
+				FROM orders 
+				WHERE user_id = $3 AND status = $4 
+				UNION ALL 
+				SELECT -sum
+				FROM withdrawals 
+				WHERE user_id = $3) AS t
+        ) >= $2`,
+		withdrawal.OrderNumber, withdrawal.Sum, withdrawal.UserID, market.OrderStatusProcessed)
 
 	if err != nil {
 		if isDuplicateKeyError(err) {
 			return market.ErrWithdrawalAlreadyExists
 		}
 		return fmt.Errorf("failed to execute add withdrawal: %w", err)
+	}
+
+	rowsAffected := result.RowsAffected()
+	if rowsAffected == 0 {
+		return market.ErrWithdrawalInsufficientFunds
 	}
 
 	return nil
@@ -327,12 +341,10 @@ func (repo *PGRepo) runMigrations() error {
 	}
 
 	err = m.Up()
-	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		return fmt.Errorf("failed to apply migrations: %w", err)
-	}
-
-	if errors.Is(err, migrate.ErrNoChange) {
-		logger.Log.Info("migrations are already installed")
+	if err != nil {
+		if !errors.Is(err, migrate.ErrNoChange) {
+			return fmt.Errorf("failed to apply migrations: %w", err)
+		}
 	} else {
 		logger.Log.Info("migrations installed succesfully")
 	}

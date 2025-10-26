@@ -26,7 +26,7 @@ type Storage interface {
 	GetWithdrawalsByUserID(ctx context.Context, user *market.User) ([]*market.Withdrawal, error)
 	GetOrdersByStatuses(ctx context.Context, statuses []market.OrderStatus) ([]*market.Order, error)
 	UpdateOrderAccrual(ctx context.Context, orderAccrual market.OrderAccrual) error
-	AddWithdrawal(ctx context.Context, withdrawal *market.Withdrawal) error
+	AddWithdrawalWithBalanceCheck(ctx context.Context, withdrawal *market.Withdrawal) error
 }
 
 type GophermartLoyaltyService struct {
@@ -193,18 +193,9 @@ func (ls *GophermartLoyaltyService) ExecuteWithdrawal(ctx context.Context, user 
 		return fmt.Errorf("failed to execute withdrawal: %w", err)
 	}
 
-	balance, err := ls.GetUserBalance(ctx, user)
+	err = ls.Storage.AddWithdrawalWithBalanceCheck(ctx, withdrawal)
 	if err != nil {
-		return fmt.Errorf("failed to get user balance: %w", err)
-	}
-
-	if balance.Current-withdrawal.Sum >= 0 {
-		err = ls.Storage.AddWithdrawal(ctx, withdrawal)
-		if err != nil {
-			return fmt.Errorf("failed to add withdrawal: %w", err)
-		}
-	} else {
-		return fmt.Errorf("failed to add withdrawal: %w", market.ErrWithdrawalInsufficientFunds)
+		return fmt.Errorf("failed to add withdrawal: %w", err)
 	}
 
 	return nil
