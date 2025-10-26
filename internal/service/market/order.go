@@ -48,11 +48,6 @@ func (order *Order) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
-	// parsed, err := time.Parse(time.RFC3339, aux.UploadedAt)
-	// if err != nil {
-	// 	return err
-	// }
-	// order.UploadedAt = parsed
 	return nil
 }
 

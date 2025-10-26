@@ -19,6 +19,15 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	OrderStatusRegistered AccrualOrderStatus = "REGISTERED"
+	OrderStatusProcessing AccrualOrderStatus = "PROCESSING"
+	OrderStatusInvalid    AccrualOrderStatus = "INVALID"
+	OrderStatusProcessed  AccrualOrderStatus = "PROCESSED"
+)
+
+type AccrualOrderStatus string
+
 type AccrualService struct {
 	workersCount int
 	jobs         chan Job
@@ -51,9 +60,9 @@ type Result struct {
 }
 
 type OrderAccrual struct {
-	Number  string  `json:"order"`
-	Status  string  `json:"status"`
-	Accrual float64 `json:"accrual"`
+	Number  string             `json:"order"`
+	Status  AccrualOrderStatus `json:"status"`
+	Accrual float64            `json:"accrual"`
 }
 
 var (
@@ -113,15 +122,15 @@ func (as *AccrualService) worker(ctx context.Context) {
 	}
 }
 
-func convertAccrualStatusToOrderStatus(status string) (market.OrderStatus, error) {
+func convertAccrualStatusToOrderStatus(status AccrualOrderStatus) (market.OrderStatus, error) {
 	switch status {
-	case "REGISTERED":
+	case OrderStatusRegistered:
 		return market.OrderStatusNew, nil
-	case "INVALID":
+	case OrderStatusInvalid:
 		return market.OrderStatusInvalid, nil
-	case "PROCESSING":
+	case OrderStatusProcessing:
 		return market.OrderStatusProcessing, nil
-	case "PROCESSED":
+	case OrderStatusProcessed:
 		return market.OrderStatusProcessed, nil
 	}
 	return "", errors.New("unexpected status from accrual service")
