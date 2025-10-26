@@ -25,7 +25,6 @@ type AccrualService struct {
 	accruals     chan market.OrderAccrual
 	client       *resty.Client
 	host         string
-	pathSeq      []string
 	pauseCond    *sync.Cond
 	isPaused     bool
 }
@@ -37,7 +36,6 @@ func NewAccrualService(host string, workersCount int) *AccrualService {
 		accruals:     make(chan market.OrderAccrual, workersCount*2),
 		client:       resty.New(),
 		host:         host,
-		pathSeq:      []string{"api", "orders", "orderNumber"},
 		pauseCond:    sync.NewCond(&sync.Mutex{})}
 }
 
@@ -61,6 +59,10 @@ type OrderAccrual struct {
 var (
 	ErrOrderNotFound = errors.New("order not found in accrual system")
 )
+
+func GetPathSeqTempl() []string {
+	return []string{"api", "orders"}
+}
 
 func (as *AccrualService) Start(ctx context.Context) {
 	for i := 0; i < as.workersCount; i++ {
@@ -142,8 +144,12 @@ func (as *AccrualService) getOrderAccrual(ctx context.Context, job Job) Result {
 		return result
 	}
 
-	as.pathSeq[len(as.pathSeq)-1] = job.OrderNumber
-	baseURL = baseURL.JoinPath(as.pathSeq...)
+	pathSeqTempl := GetPathSeqTempl()
+	pathSeq := make([]string, len(pathSeqTempl)+1)
+	pathSeq = append(pathSeq, pathSeqTempl...)
+	pathSeq = append(pathSeq, job.OrderNumber)
+
+	baseURL = baseURL.JoinPath(pathSeq...)
 
 	// baseURL := &url.URL{
 	// 	Scheme: "http",
