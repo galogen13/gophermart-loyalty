@@ -37,7 +37,7 @@ func NewAccrualService(host string, workersCount int) *AccrualService {
 		accruals:     make(chan market.OrderAccrual, workersCount*2),
 		client:       resty.New(),
 		host:         host,
-		pathSeq:      []string{"api", "orders"},
+		pathSeq:      []string{"api", "orders", "orderNumber"},
 		pauseCond:    sync.NewCond(&sync.Mutex{})}
 }
 
@@ -142,7 +142,7 @@ func (as *AccrualService) getOrderAccrual(ctx context.Context, job Job) Result {
 		return result
 	}
 
-	as.pathSeq = append(as.pathSeq, job.OrderNumber)
+	as.pathSeq[len(as.pathSeq)-1] = job.OrderNumber
 	baseURL = baseURL.JoinPath(as.pathSeq...)
 
 	// baseURL := &url.URL{
