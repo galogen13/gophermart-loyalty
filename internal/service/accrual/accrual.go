@@ -25,7 +25,7 @@ type AccrualService struct {
 	accruals     chan market.OrderAccrual
 	client       *resty.Client
 	host         string
-	pathTempl    string
+	pathSeq      []string
 	pauseCond    *sync.Cond
 	isPaused     bool
 }
@@ -37,7 +37,7 @@ func NewAccrualService(host string, workersCount int) *AccrualService {
 		accruals:     make(chan market.OrderAccrual, workersCount*2),
 		client:       resty.New(),
 		host:         host,
-		pathTempl:    "api/orders/%v",
+		pathSeq:      []string{"api", "orders"},
 		pauseCond:    sync.NewCond(&sync.Mutex{})}
 }
 
@@ -134,16 +134,23 @@ func (as *AccrualService) getOrderAccrual(ctx context.Context, job Job) Result {
 	// 		return nil
 	// 	}))
 
-	path := fmt.Sprintf(as.pathTempl, job.OrderNumber)
-
-	baseURL := &url.URL{
-		Scheme: "http",
-		Host:   as.host,
-		Path:   path,
-	}
-	fullURL := baseURL.String()
-
 	result := Result{}
+
+	baseURL, err := url.Parse(as.host)
+	if err != nil {
+		result.err = err
+		return result
+	}
+
+	as.pathSeq = append(as.pathSeq, job.OrderNumber)
+	baseURL = baseURL.JoinPath(as.pathSeq...)
+
+	// baseURL := &url.URL{
+	// 	Scheme: "http",
+	// 	Host:   as.host,
+	// 	Path:   path,
+	// }
+	fullURL := baseURL.String()
 
 	resp, err := retry.DoWithResult(
 		ctx,
