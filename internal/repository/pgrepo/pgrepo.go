@@ -113,9 +113,9 @@ func (repo *PGRepo) AddOrder(ctx context.Context, order *market.Order) error {
 	return nil
 }
 
-func (repo *PGRepo) GetOrdersByUserID(ctx context.Context, user *market.User) ([]*market.Order, error) {
+func (repo *PGRepo) GetOrdersByUserID(ctx context.Context, user *market.User) ([]market.Order, error) {
 
-	result := []*market.Order{}
+	result := []market.Order{}
 	rows, err := repo.pool.Query(ctx, `SELECT id, "number", status, accrual, uploaded_at, user_id
 	FROM orders WHERE user_id = $1
 	ORDER BY uploaded_at DESC;`, user.ID)
@@ -142,7 +142,7 @@ func (repo *PGRepo) GetOrdersByUserID(ctx context.Context, user *market.User) ([
 			return nil, fmt.Errorf("failed to scan query result GetOrders: %w", err)
 		}
 
-		result = append(result, &qOrder)
+		result = append(result, qOrder)
 	}
 
 	err = rows.Err()
@@ -197,9 +197,9 @@ func (repo *PGRepo) GetBalanceByUserID(ctx context.Context, user *market.User) (
 
 }
 
-func (repo *PGRepo) GetWithdrawalsByUserID(ctx context.Context, user *market.User) ([]*market.Withdrawal, error) {
+func (repo *PGRepo) GetWithdrawalsByUserID(ctx context.Context, user *market.User) ([]market.Withdrawal, error) {
 
-	result := []*market.Withdrawal{}
+	result := []market.Withdrawal{}
 	rows, err := repo.pool.Query(ctx, `SELECT order_number, sum, processed_at, user_id
 		FROM withdrawals 
 		WHERE user_id = $1
@@ -224,7 +224,7 @@ func (repo *PGRepo) GetWithdrawalsByUserID(ctx context.Context, user *market.Use
 			return nil, fmt.Errorf("failed to scan query result GetWithdrawalsByUserID: %w", err)
 		}
 
-		result = append(result, &withdrawal)
+		result = append(result, withdrawal)
 	}
 
 	err = rows.Err()
@@ -235,8 +235,8 @@ func (repo *PGRepo) GetWithdrawalsByUserID(ctx context.Context, user *market.Use
 
 }
 
-func (repo *PGRepo) GetOrdersByStatuses(ctx context.Context, statuses []market.OrderStatus) ([]*market.Order, error) {
-	result := []*market.Order{}
+func (repo *PGRepo) GetOrdersByStatuses(ctx context.Context, statuses []market.OrderStatus) ([]market.Order, error) {
+	result := []market.Order{}
 	rows, err := repo.pool.Query(ctx, `SELECT id, "number", status, accrual, uploaded_at, user_id
 		FROM orders WHERE status = ANY($1);`,
 		statuses)
@@ -262,7 +262,7 @@ func (repo *PGRepo) GetOrdersByStatuses(ctx context.Context, statuses []market.O
 			return nil, fmt.Errorf("failed to scan query result GetOrdersByStatuses: %w", err)
 		}
 
-		result = append(result, &order)
+		result = append(result, order)
 	}
 
 	err = rows.Err()

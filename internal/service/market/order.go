@@ -127,11 +127,6 @@ func (withdrawal *Withdrawal) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
-	// parsed, err := time.Parse(time.RFC3339, aux.ProcessedAt)
-	// if err != nil {
-	// 	return err
-	// }
-	// withdrawal.ProcessedAt = parsed
 	return nil
 }
 

@@ -20,11 +20,11 @@ type Storage interface {
 	AddUser(ctx context.Context, user *market.User) error
 	GetUserByLogin(ctx context.Context, user *market.User) error
 	AddOrder(ctx context.Context, order *market.Order) error
-	GetOrdersByUserID(ctx context.Context, user *market.User) ([]*market.Order, error)
+	GetOrdersByUserID(ctx context.Context, user *market.User) ([]market.Order, error)
 	GetOrderByNumber(ctx context.Context, order *market.Order) error
 	GetBalanceByUserID(ctx context.Context, user *market.User) (*market.Balance, error)
-	GetWithdrawalsByUserID(ctx context.Context, user *market.User) ([]*market.Withdrawal, error)
-	GetOrdersByStatuses(ctx context.Context, statuses []market.OrderStatus) ([]*market.Order, error)
+	GetWithdrawalsByUserID(ctx context.Context, user *market.User) ([]market.Withdrawal, error)
+	GetOrdersByStatuses(ctx context.Context, statuses []market.OrderStatus) ([]market.Order, error)
 	UpdateOrderAccrual(ctx context.Context, orderAccrual market.OrderAccrual) error
 	AddWithdrawalWithBalanceCheck(ctx context.Context, withdrawal *market.Withdrawal) error
 }
@@ -130,7 +130,7 @@ func (ls *GophermartLoyaltyService) AddOrder(ctx context.Context, order *market.
 	return nil
 }
 
-func (ls *GophermartLoyaltyService) GetUserOrders(ctx context.Context, user *market.User) ([]*market.Order, error) {
+func (ls *GophermartLoyaltyService) GetUserOrders(ctx context.Context, user *market.User) ([]market.Order, error) {
 
 	orders, err := ls.Storage.GetOrdersByUserID(ctx, user)
 	if err != nil {
@@ -150,7 +150,7 @@ func (ls *GophermartLoyaltyService) GetUserBalance(ctx context.Context, user *ma
 	return balance, nil
 }
 
-func (ls *GophermartLoyaltyService) GetUserWithdrawals(ctx context.Context, user *market.User) ([]*market.Withdrawal, error) {
+func (ls *GophermartLoyaltyService) GetUserWithdrawals(ctx context.Context, user *market.User) ([]market.Withdrawal, error) {
 
 	withdrawals, err := ls.Storage.GetWithdrawalsByUserID(ctx, user)
 	if err != nil {
@@ -164,7 +164,7 @@ func (ls *GophermartLoyaltyService) GetUserWithdrawals(ctx context.Context, user
 	return withdrawals, nil
 }
 
-func (ls *GophermartLoyaltyService) GetUnprocessedOrders(ctx context.Context) ([]*market.Order, error) {
+func (ls *GophermartLoyaltyService) GetUnprocessedOrders(ctx context.Context) ([]market.Order, error) {
 
 	nonFinalStatuses := market.NonFinalStatuses()
 

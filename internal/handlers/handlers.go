@@ -17,9 +17,9 @@ type LoyaltyService interface {
 	RegisterUser(ctx context.Context, user *market.User) error
 	LoginUser(ctx context.Context, user *market.User) error
 	AddOrder(ctx context.Context, order *market.Order) error
-	GetUserOrders(ctx context.Context, user *market.User) ([]*market.Order, error)
+	GetUserOrders(ctx context.Context, user *market.User) ([]market.Order, error)
 	GetUserBalance(ctx context.Context, user *market.User) (*market.Balance, error)
-	GetUserWithdrawals(ctx context.Context, user *market.User) ([]*market.Withdrawal, error)
+	GetUserWithdrawals(ctx context.Context, user *market.User) ([]market.Withdrawal, error)
 	ExecuteWithdrawal(ctx context.Context, user *market.User, withdrawal *market.Withdrawal) error
 	AuthService
 }
