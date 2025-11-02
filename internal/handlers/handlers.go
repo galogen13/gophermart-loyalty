@@ -194,6 +194,11 @@ func GetUserOrdersHandler(ls LoyaltyService) http.HandlerFunc {
 
 		orders, err := ls.GetUserOrders(ctx, user)
 		if err != nil {
+			if errors.Is(err, market.ErrNoOrders) {
+				logger.Log.Info("Error getting users orders", zap.Error(err))
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
 			logger.Log.Error("Error adding order", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return

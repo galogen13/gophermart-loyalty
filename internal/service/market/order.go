@@ -96,6 +96,7 @@ var (
 	ErrOrderAlreadyExists        error = errors.New("order already exists")
 	ErrOrderBelongsToAnotherUser error = errors.New("order belongs to another user")
 	ErrOrderIncorrectNumber      error = errors.New("order incorrect number")
+	ErrNoOrders                  error = errors.New("no orders")
 )
 
 type Withdrawal struct {

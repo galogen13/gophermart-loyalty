@@ -16,6 +16,7 @@ import (
 	"go.uber.org/zap"
 )
 
+//go:generate mockgen -destination=mocks/storage_mock.go . Storage
 type Storage interface {
 	AddUser(ctx context.Context, user *market.User) error
 	GetUserByLogin(ctx context.Context, user *market.User) error
@@ -107,6 +108,10 @@ func (ls *GophermartLoyaltyService) AddOrder(ctx context.Context, order *market.
 		return fmt.Errorf("failed to add order: %w", err)
 	}
 
+	if order.UserID == nil {
+		return errors.New("user ID expected")
+	}
+
 	existedOrder := &market.Order{Number: order.Number}
 	err = ls.Storage.GetOrderByNumber(ctx, existedOrder)
 	if err == nil {
@@ -135,6 +140,10 @@ func (ls *GophermartLoyaltyService) GetUserOrders(ctx context.Context, user *mar
 	orders, err := ls.Storage.GetOrdersByUserID(ctx, user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get orders: %w", err)
+	}
+
+	if len(orders) == 0 {
+		return []market.Order{}, market.ErrNoOrders
 	}
 
 	return orders, nil
