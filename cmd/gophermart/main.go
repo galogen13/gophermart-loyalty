@@ -44,9 +44,7 @@ func run() error {
 
 	authService := auth.NewJWTAuthService(config.JWTSecret)
 
-	var ls handlers.LoyaltyService
-
-	ls = loyalty.NewGophermartLoyaltyService(config, storage, accrualService, authService)
+	var ls handlers.LoyaltyService = loyalty.NewGophermartLoyaltyService(config, storage, accrualService, authService)
 
 	if err := ls.Start(ctx); err != nil {
 		return err

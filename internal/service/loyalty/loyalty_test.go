@@ -196,14 +196,14 @@ func TestGophermartLoyaltyService_AddOrder(t *testing.T) {
 	accrualService := &accrual.AccrualService{}
 	authService := &auth.JWTAuthService{}
 
-	var userId1 int64 = 1
-	order := market.Order{Number: "34", UserID: &userId1, Status: market.OrderStatusNew}
+	var userID1 int64 = 1
+	order := market.Order{Number: "34", UserID: &userID1, Status: market.OrderStatusNew}
 	existedOrderByNumber := market.Order{ID: 1, Number: order.Number, UserID: order.UserID}
 
-	var userId2 int64 = 2
-	orderByOtherUser := market.Order{ID: 2, Number: order.Number, UserID: &userId2}
+	var userID2 int64 = 2
+	orderByOtherUser := market.Order{ID: 2, Number: order.Number, UserID: &userID2}
 
-	badOrder1 := market.Order{ID: 2, Number: "11", UserID: &userId1} // плохой номер
+	badOrder1 := market.Order{ID: 2, Number: "11", UserID: &userID1} // плохой номер
 	badOrder2 := market.Order{ID: 3, Number: "34"}                   // не указан id пользователя
 
 	tests := []struct {
