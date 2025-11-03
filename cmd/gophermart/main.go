@@ -6,6 +6,7 @@ import (
 
 	"github.com/galogen13/gophermart-loyalty/internal/auth"
 	"github.com/galogen13/gophermart-loyalty/internal/config"
+	"github.com/galogen13/gophermart-loyalty/internal/handlers"
 	"github.com/galogen13/gophermart-loyalty/internal/logger"
 	"github.com/galogen13/gophermart-loyalty/internal/repository/pgrepo"
 	"github.com/galogen13/gophermart-loyalty/internal/service/accrual"
@@ -43,7 +44,9 @@ func run() error {
 
 	authService := auth.NewJWTAuthService(config.JWTSecret)
 
-	ls := loyalty.NewGophermartLoyaltyService(config, storage, accrualService, authService)
+	var ls handlers.LoyaltyService
+
+	ls = loyalty.NewGophermartLoyaltyService(config, storage, accrualService, authService)
 
 	if err := ls.Start(ctx); err != nil {
 		return err

@@ -42,7 +42,7 @@ func (m *MockStorage) EXPECT() *MockStorageMockRecorder {
 }
 
 // AddOrder mocks base method.
-func (m *MockStorage) AddOrder(ctx context.Context, order *market.Order) error {
+func (m *MockStorage) AddOrder(ctx context.Context, order market.Order) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddOrder", ctx, order)
 	ret0, _ := ret[0].(error)
@@ -56,11 +56,12 @@ func (mr *MockStorageMockRecorder) AddOrder(ctx, order any) *gomock.Call {
 }
 
 // AddUser mocks base method.
-func (m *MockStorage) AddUser(ctx context.Context, user *market.User) error {
+func (m *MockStorage) AddUser(ctx context.Context, user market.User) (*market.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddUser", ctx, user)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(*market.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // AddUser indicates an expected call of AddUser.
@@ -70,7 +71,7 @@ func (mr *MockStorageMockRecorder) AddUser(ctx, user any) *gomock.Call {
 }
 
 // AddWithdrawalWithBalanceCheck mocks base method.
-func (m *MockStorage) AddWithdrawalWithBalanceCheck(ctx context.Context, withdrawal *market.Withdrawal) error {
+func (m *MockStorage) AddWithdrawalWithBalanceCheck(ctx context.Context, withdrawal market.Withdrawal) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddWithdrawalWithBalanceCheck", ctx, withdrawal)
 	ret0, _ := ret[0].(error)
@@ -84,7 +85,7 @@ func (mr *MockStorageMockRecorder) AddWithdrawalWithBalanceCheck(ctx, withdrawal
 }
 
 // GetBalanceByUserID mocks base method.
-func (m *MockStorage) GetBalanceByUserID(ctx context.Context, user *market.User) (*market.Balance, error) {
+func (m *MockStorage) GetBalanceByUserID(ctx context.Context, user market.User) (*market.Balance, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetBalanceByUserID", ctx, user)
 	ret0, _ := ret[0].(*market.Balance)
@@ -99,11 +100,12 @@ func (mr *MockStorageMockRecorder) GetBalanceByUserID(ctx, user any) *gomock.Cal
 }
 
 // GetOrderByNumber mocks base method.
-func (m *MockStorage) GetOrderByNumber(ctx context.Context, order *market.Order) error {
+func (m *MockStorage) GetOrderByNumber(ctx context.Context, order market.Order) (*market.Order, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetOrderByNumber", ctx, order)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(*market.Order)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // GetOrderByNumber indicates an expected call of GetOrderByNumber.
@@ -128,7 +130,7 @@ func (mr *MockStorageMockRecorder) GetOrdersByStatuses(ctx, statuses any) *gomoc
 }
 
 // GetOrdersByUserID mocks base method.
-func (m *MockStorage) GetOrdersByUserID(ctx context.Context, user *market.User) ([]market.Order, error) {
+func (m *MockStorage) GetOrdersByUserID(ctx context.Context, user market.User) ([]market.Order, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetOrdersByUserID", ctx, user)
 	ret0, _ := ret[0].([]market.Order)
@@ -143,11 +145,12 @@ func (mr *MockStorageMockRecorder) GetOrdersByUserID(ctx, user any) *gomock.Call
 }
 
 // GetUserByLogin mocks base method.
-func (m *MockStorage) GetUserByLogin(ctx context.Context, user *market.User) error {
+func (m *MockStorage) GetUserByLogin(ctx context.Context, user market.User) (*market.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserByLogin", ctx, user)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(*market.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // GetUserByLogin indicates an expected call of GetUserByLogin.
@@ -157,7 +160,7 @@ func (mr *MockStorageMockRecorder) GetUserByLogin(ctx, user any) *gomock.Call {
 }
 
 // GetWithdrawalsByUserID mocks base method.
-func (m *MockStorage) GetWithdrawalsByUserID(ctx context.Context, user *market.User) ([]market.Withdrawal, error) {
+func (m *MockStorage) GetWithdrawalsByUserID(ctx context.Context, user market.User) ([]market.Withdrawal, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetWithdrawalsByUserID", ctx, user)
 	ret0, _ := ret[0].([]market.Withdrawal)

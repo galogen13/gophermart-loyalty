@@ -14,13 +14,14 @@ import (
 )
 
 type LoyaltyService interface {
-	RegisterUser(ctx context.Context, user *market.User) error
-	LoginUser(ctx context.Context, user *market.User) error
-	AddOrder(ctx context.Context, order *market.Order) error
-	GetUserOrders(ctx context.Context, user *market.User) ([]market.Order, error)
-	GetUserBalance(ctx context.Context, user *market.User) (*market.Balance, error)
-	GetUserWithdrawals(ctx context.Context, user *market.User) ([]market.Withdrawal, error)
-	ExecuteWithdrawal(ctx context.Context, user *market.User, withdrawal *market.Withdrawal) error
+	Start(ctx context.Context) error
+	RegisterUser(ctx context.Context, userCred market.UserCredentials) (*market.User, error)
+	LoginUser(ctx context.Context, userCred market.UserCredentials) (*market.User, error)
+	AddOrder(ctx context.Context, order market.Order) error
+	GetUserOrders(ctx context.Context, user market.User) ([]market.Order, error)
+	GetUserBalance(ctx context.Context, user market.User) (*market.Balance, error)
+	GetUserWithdrawals(ctx context.Context, user market.User) ([]market.Withdrawal, error)
+	ExecuteWithdrawal(ctx context.Context, withdrawal market.Withdrawal) error
 	AuthService
 }
 
@@ -35,22 +36,22 @@ func RegisterUserHandler(ls LoyaltyService) http.HandlerFunc {
 
 		ctx := r.Context()
 
-		user := &market.User{}
-		if err := json.NewDecoder(r.Body).Decode(user); err != nil {
+		userCred := &market.UserCredentials{}
+		if err := json.NewDecoder(r.Body).Decode(userCred); err != nil {
 			logger.Log.Error("JSON decoding error", zap.Error(err))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		hashedPassword, err := password.HashPassword(user.Password)
+		hashedPassword, err := password.HashPassword(userCred.Password)
 		if err != nil {
 			logger.Log.Error("Error processing password", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		user.Password = hashedPassword
+		userCred.Password = hashedPassword
 
-		err = ls.RegisterUser(ctx, user)
+		user, err := ls.RegisterUser(ctx, *userCred)
 		if err != nil {
 			logger.Log.Info("Error register user", zap.Error(err))
 			if errors.Is(err, market.ErrUserLoginAlreadyInUse) {
@@ -75,7 +76,6 @@ func RegisterUserHandler(ls LoyaltyService) http.HandlerFunc {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-
 	}
 }
 
@@ -84,16 +84,16 @@ func LoginUserHandler(ls LoyaltyService) http.HandlerFunc {
 
 		ctx := r.Context()
 
-		user := &market.User{}
-		if err := json.NewDecoder(r.Body).Decode(user); err != nil {
+		userCred := &market.UserCredentials{}
+		if err := json.NewDecoder(r.Body).Decode(userCred); err != nil {
 			logger.Log.Error("JSON decoding error", zap.Error(err))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		incomingPass := user.Password
+		incomingPass := userCred.Password
 
-		err := ls.LoginUser(ctx, user)
+		user, err := ls.LoginUser(ctx, *userCred)
 		if err != nil {
 			logger.Log.Info("Error login user", zap.Error(err))
 			if errors.Is(err, market.ErrUserNotExists) {
@@ -146,7 +146,7 @@ func AddOrderHandler(ls LoyaltyService) http.HandlerFunc {
 			return
 		}
 
-		order := &market.Order{
+		order := market.Order{
 			Number: string(b),
 			UserID: user.ID}
 
@@ -192,7 +192,7 @@ func GetUserOrdersHandler(ls LoyaltyService) http.HandlerFunc {
 			return
 		}
 
-		orders, err := ls.GetUserOrders(ctx, user)
+		orders, err := ls.GetUserOrders(ctx, *user)
 		if err != nil {
 			if errors.Is(err, market.ErrNoOrders) {
 				logger.Log.Info("Error getting users orders", zap.Error(err))
@@ -228,7 +228,7 @@ func GetBalanceHandler(ls LoyaltyService) http.HandlerFunc {
 			return
 		}
 
-		balance, err := ls.GetUserBalance(ctx, user)
+		balance, err := ls.GetUserBalance(ctx, *user)
 		if err != nil {
 			logger.Log.Error("Error getting user balance", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
@@ -259,7 +259,7 @@ func GetWithdrawalsHandler(ls LoyaltyService) http.HandlerFunc {
 			return
 		}
 
-		withdrawals, err := ls.GetUserWithdrawals(ctx, user)
+		withdrawals, err := ls.GetUserWithdrawals(ctx, *user)
 		if err != nil {
 			if errors.Is(err, market.ErrNoWithdrawals) {
 				w.WriteHeader(http.StatusNoContent)
@@ -304,7 +304,7 @@ func ExecuteWithdrawalHandler(ls LoyaltyService) http.HandlerFunc {
 
 		withdrawal.UserID = user.ID
 
-		err = ls.ExecuteWithdrawal(ctx, user, withdrawal)
+		err = ls.ExecuteWithdrawal(ctx, *withdrawal)
 		if err != nil {
 			if errors.Is(err, market.ErrOrderIncorrectNumber) {
 				logger.Log.Info("Error executing withdrawals", zap.Error(err))

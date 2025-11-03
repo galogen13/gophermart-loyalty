@@ -58,7 +58,7 @@ func (repo *PGRepo) Close() error {
 	return nil
 }
 
-func (repo *PGRepo) AddUser(ctx context.Context, user *market.User) error {
+func (repo *PGRepo) AddUser(ctx context.Context, user market.User) (*market.User, error) {
 
 	var id int64
 
@@ -70,32 +70,32 @@ func (repo *PGRepo) AddUser(ctx context.Context, user *market.User) error {
 
 	if err != nil {
 		if isDuplicateKeyError(err) {
-			return market.ErrUserLoginAlreadyInUse
+			return nil, market.ErrUserLoginAlreadyInUse
 		}
-		return fmt.Errorf("failed to execute insert user: %w", err)
+		return nil, fmt.Errorf("failed to execute insert user: %w", err)
 	}
 
 	user.ID = &id
 
-	return nil
+	return &user, nil
 }
 
-func (repo *PGRepo) GetUserByLogin(ctx context.Context, user *market.User) error {
+func (repo *PGRepo) GetUserByLogin(ctx context.Context, user market.User) (*market.User, error) {
 
 	row := repo.pool.QueryRow(ctx, `SELECT id, login, password
 		FROM users WHERE login=$1;`, user.Login)
 	err := row.Scan(&user.ID, &user.Login, &user.Password)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return market.ErrUserNotExists
+			return nil, market.ErrUserNotExists
 		}
-		return fmt.Errorf("failed to get user: %w", err)
+		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
-	return nil
+	return &user, nil
 }
 
-func (repo *PGRepo) AddOrder(ctx context.Context, order *market.Order) error {
+func (repo *PGRepo) AddOrder(ctx context.Context, order market.Order) error {
 
 	_, err := repo.pool.Exec(
 		ctx,
@@ -113,7 +113,7 @@ func (repo *PGRepo) AddOrder(ctx context.Context, order *market.Order) error {
 	return nil
 }
 
-func (repo *PGRepo) GetOrdersByUserID(ctx context.Context, user *market.User) ([]market.Order, error) {
+func (repo *PGRepo) GetOrdersByUserID(ctx context.Context, user market.User) ([]market.Order, error) {
 
 	result := []market.Order{}
 	rows, err := repo.pool.Query(ctx, `SELECT id, "number", status, accrual, uploaded_at, user_id
@@ -152,7 +152,7 @@ func (repo *PGRepo) GetOrdersByUserID(ctx context.Context, user *market.User) ([
 	return result, nil
 }
 
-func (repo *PGRepo) GetOrderByNumber(ctx context.Context, order *market.Order) error {
+func (repo *PGRepo) GetOrderByNumber(ctx context.Context, order market.Order) (*market.Order, error) {
 
 	row := repo.pool.QueryRow(
 		ctx,
@@ -163,16 +163,16 @@ func (repo *PGRepo) GetOrderByNumber(ctx context.Context, order *market.Order) e
 	err := row.Scan(&order.ID, &order.Status, &order.Accrual, &order.UploadedAt, &order.UserID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return market.ErrOrderNotExists
+			return nil, market.ErrOrderNotExists
 		}
-		return fmt.Errorf("failed to get order by number: %w", err)
+		return nil, fmt.Errorf("failed to get order by number: %w", err)
 	}
 
-	return nil
+	return &order, nil
 
 }
 
-func (repo *PGRepo) GetBalanceByUserID(ctx context.Context, user *market.User) (*market.Balance, error) {
+func (repo *PGRepo) GetBalanceByUserID(ctx context.Context, user market.User) (*market.Balance, error) {
 
 	row := repo.pool.QueryRow(
 		ctx,
@@ -197,7 +197,7 @@ func (repo *PGRepo) GetBalanceByUserID(ctx context.Context, user *market.User) (
 
 }
 
-func (repo *PGRepo) GetWithdrawalsByUserID(ctx context.Context, user *market.User) ([]market.Withdrawal, error) {
+func (repo *PGRepo) GetWithdrawalsByUserID(ctx context.Context, user market.User) ([]market.Withdrawal, error) {
 
 	result := []market.Withdrawal{}
 	rows, err := repo.pool.Query(ctx, `SELECT order_number, sum, processed_at, user_id
@@ -288,7 +288,7 @@ func (repo *PGRepo) UpdateOrderAccrual(ctx context.Context, orderAccrual market.
 	return nil
 }
 
-func (repo *PGRepo) AddWithdrawalWithBalanceCheck(ctx context.Context, withdrawal *market.Withdrawal) error {
+func (repo *PGRepo) AddWithdrawalWithBalanceCheck(ctx context.Context, withdrawal market.Withdrawal) error {
 
 	result, err := repo.pool.Exec(
 		ctx,
