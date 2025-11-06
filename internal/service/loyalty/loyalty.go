@@ -118,7 +118,7 @@ func (ls *GophermartLoyaltyService) AddOrder(ctx context.Context, order market.O
 
 	existedOrder, err := ls.Storage.GetOrderByNumber(ctx, order)
 	if err == nil {
-		if *order.UserID == *existedOrder.UserID {
+		if order.UserID == existedOrder.UserID {
 			return market.ErrOrderAlreadyExists
 		} else {
 			return market.ErrOrderBelongsToAnotherUser
